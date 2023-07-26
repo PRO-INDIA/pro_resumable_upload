@@ -15,40 +15,64 @@ typedef ProgressCallback = void Function(
 typedef CompleteCallback = void Function(String path, http.Response response);
 
 class UploadClient {
+  // The file to upload
   final File file;
 
+  // Any additional header
   Map<String, dynamic>? headers;
 
+  // Azure blob configuration
   BlobConfig? blobConfig;
 
+  // The chunk size
+  // default is 4Mb
   final int chunkSize;
 
+  // Upload file size in bytes
   int fileSize = 0;
 
+  // Upload status
   UploadStatus _status;
 
+  // BlockId list
   List<String> blockIds = [];
 
+  // Upload meta data for store
   late UploadMetaData metaData;
 
+  // Offset value
   int offset = 0;
 
+  // unique generated string by file name
   late String fingerPrint;
 
+  // Callback function on progress
   ProgressCallback? _onProgress;
 
+  // Callback function after upload
   CompleteCallback? _onComplete;
 
+  // Upload Cache
+  // default is MemoryCache
   final UploadCache cache;
+
+  // Request timeout
+  // default is 30 seconds
+  final Duration timeout;
+
+  // Callback fucntion on timeout request
+  Function()? _onTimeout;
 
   UploadClient(
       {required this.file,
       this.headers,
       this.blobConfig,
       int? chunkSize,
-      UploadCache? cache})
-      : chunkSize = chunkSize ?? 1 * 1024 * 1024,
+      UploadCache? cache,
+      Duration? timeout})
+      : chunkSize = chunkSize ?? 4 * 1024 * 1024,
         cache = cache ?? MemoryCache(),
+        timeout = timeout ?? const Duration(seconds: 30),
         _status = UploadStatus.initialized {
     fingerPrint = generateFingerprint();
     metaData = UploadMetaData(fingerPrint, offset);
@@ -57,6 +81,7 @@ class UploadClient {
   uploadBlob({
     ProgressCallback? onProgress,
     CompleteCallback? onComplete,
+    Function()? onTimeout,
   }) async {
     if (blobConfig == null)
       throw ResumableUploadException('Blob config missing');
@@ -66,9 +91,14 @@ class UploadClient {
 
     _onComplete = onComplete;
 
+    _onTimeout = onTimeout;
+
     final commitUri = blobConfig!.getCommitUri();
 
-    await _upload(blobConfig!.getRequestUri);
+    http.Response? uploadResposne = await _upload(blobConfig!.getRequestUri);
+
+    // If Response has Timeout to stop following process
+    if (uploadResposne?.statusCode == HttpStatus.requestTimeout) return;
 
     final blockListXml =
         '<BlockList>${blockIds.map((id) => '<Latest>$id</Latest>').join()}</BlockList>';
@@ -80,7 +110,7 @@ class UploadClient {
     _onComplete?.call(response.request!.url.path, response);
   }
 
-  _upload(Function(String) getUrl) async {
+  Future<http.Response?> _upload(Function(String) getUrl) async {
     fileSize = await file.length();
 
     _canResume();
@@ -106,7 +136,12 @@ class UploadClient {
 
       final chunkData = data.sublist(offset, size);
 
-      final response = await http.put(url, body: chunkData);
+      Future? _uploadFuture = http.put(url, body: chunkData);
+      final response = await _uploadFuture.timeout(timeout, onTimeout: () {
+        _onTimeout?.call();
+        return http.Response('', HttpStatus.requestTimeout,
+            reasonPhrase: 'Request timeout');
+      });
       if (response.statusCode == 201) {
         blockIds.add(blockId);
 
@@ -125,10 +160,12 @@ class UploadClient {
         throw ResumableUploadException('Upload Failed', response: response);
       }
     }
+    return null;
   }
 
   cancel() {
     _status = UploadStatus.cancelled;
+    cache.delete(fingerPrint);
     return ResumableUploadException('User cancelled upload!');
   }
 
