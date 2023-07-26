@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:pro_resumable_upload/src/blob_config.dart';
@@ -13,7 +12,7 @@ import 'exception.dart';
 typedef ProgressCallback = void Function(
     int count, int total, http.Response? response);
 
-typedef CompleteCallback = void Function(http.Response response);
+typedef CompleteCallback = void Function(String path, http.Response response);
 
 class UploadClient {
   final File file;
@@ -78,7 +77,7 @@ class UploadClient {
 
     cache.delete(fingerPrint);
 
-    _onComplete?.call(response);
+    _onComplete?.call(response.request!.url.path, response);
   }
 
   _upload(Function(String) getUrl) async {
@@ -128,7 +127,10 @@ class UploadClient {
     }
   }
 
-  cancel() => _status = UploadStatus.cancelled;
+  cancel() {
+    _status = UploadStatus.cancelled;
+    return ResumableUploadException('User cancelled upload!');
+  }
 
   clearCache() => cache.clearAll();
 
@@ -168,6 +170,8 @@ class UploadClient {
     uploadData.isUploading = true;
 
     metaData = uploadData;
+
+    _onProgress?.call(offset, fileSize, null);
   }
 
   ResumableUploadException _uploadError() {
