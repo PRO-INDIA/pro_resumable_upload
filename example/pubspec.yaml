@@ -30,7 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  pro_resumable_upload:
+  resumable_upload:
     path: ../
 
 

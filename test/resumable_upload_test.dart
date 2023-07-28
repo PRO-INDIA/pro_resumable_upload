@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:pro_resumable_upload/resumable_upload.dart';
+import 'package:resumable_upload/resumable_upload.dart';
 
 void main() {
   test('adds one to input values', () {

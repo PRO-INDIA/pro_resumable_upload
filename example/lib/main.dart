@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:pro_resumable_upload/resumable_upload.dart';
+import 'package:resumable_upload/resumable_upload.dart';
 
 void main() {
   runApp(const MyApp());
@@ -43,15 +43,6 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
@@ -66,21 +57,21 @@ class _MyHomePageState extends State<MyHomePage> {
   _upload_func() async {
     final filePath = await filePathPicker();
     final File file = File(filePath!);
-    const String accountName = 'worksamplestorageaccount';
-    const String containerName = 'blob-video';
+    const String accountName = '[ACCOUNT_NAME]';
+    const String containerName = '[CONTAINER_NAME]';
     final String blobName = file.path.split('/').last;
-    const String sasToken =
-        'sv=2021-10-04&spr=https%2Chttp&si=policy&sr=c&sig=8HviQasX5hHatEhc%2BQM91flI8hVobQ8WGfyZxj1kCII%3D';
+    const String sasToken = '[SAS-TOKEN]';
 
     try {
       client = UploadClient(
-          file: file,
-          cache: _localCache,
-          blobConfig: BlobConfig(
-              accountName: accountName,
-              containerName: containerName,
-              blobName: blobName,
-              sasToken: sasToken));
+        file: file,
+        cache: _localCache,
+        blobConfig: BlobConfig(
+            accountName: accountName,
+            containerName: containerName,
+            blobName: blobName,
+            sasToken: sasToken),
+      );
       client!.uploadBlob(
         onProgress: (count, total, response) {
           final num = ((count / total) * 100).toInt().toString();

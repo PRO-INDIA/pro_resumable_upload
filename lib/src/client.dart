@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:pro_resumable_upload/src/blob_config.dart';
-import 'package:pro_resumable_upload/src/cache.dart';
-import 'package:pro_resumable_upload/src/upload_metadata.dart';
-import 'package:pro_resumable_upload/src/upload_status.dart';
+import 'package:resumable_upload/src/blob_config.dart';
+import 'package:resumable_upload/src/cache.dart';
+import 'package:resumable_upload/src/upload_metadata.dart';
+import 'package:resumable_upload/src/upload_status.dart';
 import 'package:http/http.dart' as http;
 
 import 'exception.dart';

@@ -1,4 +1,4 @@
-name: pro_resumable_upload
+name: resumable_upload
 description: A new Flutter package project.
 version: 0.0.1
 homepage:
@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.1.0
+  http: ^0.13.5
   path_provider: ^2.0.15
   shared_preferences: ^2.2.0
 

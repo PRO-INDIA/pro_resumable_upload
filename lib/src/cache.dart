@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 // import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:pro_resumable_upload/src/upload_metadata.dart';
+import 'package:resumable_upload/src/upload_metadata.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 abstract class UploadCache {
