@@ -83,8 +83,10 @@ class UploadClient {
     CompleteCallback? onComplete,
     Function()? onTimeout,
   }) async {
-    if (blobConfig == null)
+    if (blobConfig == null) {
       throw ResumableUploadException('Blob config missing');
+    }
+
     _status = UploadStatus.started;
 
     _onProgress = onProgress;
@@ -136,8 +138,8 @@ class UploadClient {
 
       final chunkData = data.sublist(offset, size);
 
-      Future? _uploadFuture = http.put(url, body: chunkData);
-      final response = await _uploadFuture.timeout(timeout, onTimeout: () {
+      Future? uploadFuture = http.put(url, body: chunkData);
+      final response = await uploadFuture.timeout(timeout, onTimeout: () {
         _onTimeout?.call();
         return http.Response('', HttpStatus.requestTimeout,
             reasonPhrase: 'Request timeout');

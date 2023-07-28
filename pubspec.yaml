@@ -1,7 +1,8 @@
 name: resumable_upload
 description: A new Flutter package project.
 version: 0.0.1
-homepage:
+homepage: https://github.com/PRO-INDIA
+repository: https://github.com/PRO-INDIA/pro_resumable_upload
 
 environment:
   sdk: '>=3.0.1 <4.0.0'

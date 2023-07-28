@@ -76,9 +76,8 @@ class LocalCache implements UploadCache {
   Future<UploadMetaData?> get(String key) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.reload();
-    String? data = await prefs.getString(key);
+    String? data = prefs.getString(key);
     if (data == null) return null;
-    print(jsonDecode(data));
     return UploadMetaData.fromJson(jsonDecode(data));
   }
 
