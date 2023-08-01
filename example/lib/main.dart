@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:resumable_upload/resumable_upload.dart';
@@ -15,27 +14,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Resumable upload Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a blue toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Resumable upload Demo Home Page'),
     );
   }
 }
@@ -57,20 +41,14 @@ class _MyHomePageState extends State<MyHomePage> {
   _upload_func() async {
     final filePath = await filePathPicker();
     final File file = File(filePath!);
-    const String accountName = '[ACCOUNT_NAME]';
-    const String containerName = '[CONTAINER_NAME]';
-    final String blobName = file.path.split('/').last;
+    const String blobUrl = '[BLOB-URL]';
     const String sasToken = '[SAS-TOKEN]';
 
     try {
       client = UploadClient(
         file: file,
         cache: _localCache,
-        blobConfig: BlobConfig(
-            accountName: accountName,
-            containerName: containerName,
-            blobName: blobName,
-            sasToken: sasToken),
+        blobConfig: BlobConfig(blobUrl: blobUrl, sasToken: sasToken),
       );
       client!.uploadBlob(
         onProgress: (count, total, response) {
