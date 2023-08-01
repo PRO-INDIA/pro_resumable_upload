@@ -1,6 +1,6 @@
 name: resumable_upload
 description: Package for resumable upload developed by PRO India.
-version: 0.0.1
+version: 0.0.2
 homepage: https://github.com/PRO-INDIA
 repository: https://github.com/PRO-INDIA/pro_resumable_upload
 
