@@ -41,8 +41,10 @@ class _MyHomePageState extends State<MyHomePage> {
   _upload_func() async {
     final filePath = await filePathPicker();
     final File file = File(filePath!);
-    const String blobUrl = '[BLOB-URL]';
-    const String sasToken = '[SAS-TOKEN]';
+    const String blobUrl =
+        'https://worksamplestorageaccount.blob.core.windows.net/blob-video/tempVideo.mp4';
+    const String sasToken =
+        'sv=2021-10-04&spr=https%2Chttp&si=policy&sr=c&sig=8HviQasX5hHatEhc%2BQM91flI8hVobQ8WGfyZxj1kCII%3D';
 
     try {
       client = UploadClient(

@@ -1,4 +1,4 @@
-import 'package:http/http.dart';
+import 'package:dio/dio.dart';
 
 class ResumableUploadException implements Exception {
   final String message;
