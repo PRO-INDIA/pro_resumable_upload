@@ -1,8 +1,7 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:pro_resumable_upload/resumable_upload.dart';
+import 'package:resumable_upload/resumable_upload.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,42 +14,18 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Resumable upload Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a blue toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Resumable upload Demo Home Page'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -66,21 +41,15 @@ class _MyHomePageState extends State<MyHomePage> {
   _upload_func() async {
     final filePath = await filePathPicker();
     final File file = File(filePath!);
-    const String accountName = 'worksamplestorageaccount';
-    const String containerName = 'blob-video';
-    final String blobName = file.path.split('/').last;
-    const String sasToken =
-        'sv=2021-10-04&spr=https%2Chttp&si=policy&sr=c&sig=8HviQasX5hHatEhc%2BQM91flI8hVobQ8WGfyZxj1kCII%3D';
+    const String blobUrl = '[BLOB-URL]';
+    const String sasToken = '[SAS-TOKEN]';
 
     try {
       client = UploadClient(
-          file: file,
-          cache: _localCache,
-          blobConfig: BlobConfig(
-              accountName: accountName,
-              containerName: containerName,
-              blobName: blobName,
-              sasToken: sasToken));
+        file: file,
+        cache: _localCache,
+        blobConfig: BlobConfig(blobUrl: blobUrl, sasToken: sasToken),
+      );
       client!.uploadBlob(
         onProgress: (count, total, response) {
           final num = ((count / total) * 100).toInt().toString();

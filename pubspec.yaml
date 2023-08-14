@@ -1,7 +1,8 @@
-name: pro_resumable_upload
-description: A new Flutter package project.
-version: 0.0.1
-homepage:
+name: resumable_upload
+description: Package for resumable upload developed by PRO India.
+version: 0.0.2
+homepage: https://github.com/PRO-INDIA
+repository: https://github.com/PRO-INDIA/pro_resumable_upload
 
 environment:
   sdk: '>=3.0.1 <4.0.0'
@@ -10,8 +11,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.1.0
+  http: ^0.13.5
   path_provider: ^2.0.15
+  dio: ^4.0.4
   shared_preferences: ^2.2.0
 
 dev_dependencies:

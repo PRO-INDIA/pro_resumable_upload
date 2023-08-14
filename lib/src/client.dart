@@ -1,54 +1,79 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:pro_resumable_upload/src/blob_config.dart';
-import 'package:pro_resumable_upload/src/cache.dart';
-import 'package:pro_resumable_upload/src/upload_metadata.dart';
-import 'package:pro_resumable_upload/src/upload_status.dart';
-import 'package:http/http.dart' as http;
+import 'package:resumable_upload/src/blob_config.dart';
+import 'package:resumable_upload/src/cache.dart';
+import 'package:resumable_upload/src/upload_metadata.dart';
+import 'package:resumable_upload/src/upload_status.dart';
+import 'package:dio/dio.dart';
 
 import 'exception.dart';
 
 typedef ProgressCallback = void Function(
-    int count, int total, http.Response? response);
+    int count, int total, Response? response);
 
-typedef CompleteCallback = void Function(String path, http.Response response);
+typedef CompleteCallback = void Function(String path, Response response);
 
 class UploadClient {
+  // The file to upload
   final File file;
 
+  // Any additional header
   Map<String, dynamic>? headers;
 
+  // Azure blob configuration
   BlobConfig? blobConfig;
 
+  // The chunk size
+  // default is 4Mb
   final int chunkSize;
 
+  // Upload file size in bytes
   int fileSize = 0;
 
+  // Upload status
   UploadStatus _status;
 
+  // BlockId list
   List<String> blockIds = [];
 
+  // Upload meta data for store
   late UploadMetaData metaData;
 
+  // Offset value
   int offset = 0;
 
+  // unique generated string by file name
   late String fingerPrint;
 
+  // Callback function on progress
   ProgressCallback? _onProgress;
 
+  // Callback function after upload
   CompleteCallback? _onComplete;
 
+  // Upload Cache
+  // default is MemoryCache
   final UploadCache cache;
 
-  UploadClient(
-      {required this.file,
-      this.headers,
-      this.blobConfig,
-      int? chunkSize,
-      UploadCache? cache})
-      : chunkSize = chunkSize ?? 1 * 1024 * 1024,
+  // Request timeout
+  // default is 30 seconds
+  final Duration timeout;
+
+  // Callback fucntion on timeout request
+  Function()? _onTimeout;
+
+  UploadClient({
+    required this.file,
+    this.headers,
+    this.blobConfig,
+    int? chunkSize,
+    UploadCache? cache,
+    Duration? timeout,
+  })  : chunkSize = chunkSize ?? 4 * 1024 * 1024,
         cache = cache ?? MemoryCache(),
+        timeout = timeout ?? const Duration(seconds: 30),
         _status = UploadStatus.initialized {
     fingerPrint = generateFingerprint();
     metaData = UploadMetaData(fingerPrint, offset);
@@ -57,30 +82,38 @@ class UploadClient {
   uploadBlob({
     ProgressCallback? onProgress,
     CompleteCallback? onComplete,
+    Function()? onTimeout,
   }) async {
-    if (blobConfig == null)
+    if (blobConfig == null) {
       throw ResumableUploadException('Blob config missing');
+    }
+
     _status = UploadStatus.started;
 
     _onProgress = onProgress;
 
     _onComplete = onComplete;
 
+    _onTimeout = onTimeout;
+
     final commitUri = blobConfig!.getCommitUri();
 
-    await _upload(blobConfig!.getRequestUri);
+    Response? uploadResponse = await _upload(blobConfig!.getRequestUri);
+
+    // If Response has Timeout to stop following process
+    if (uploadResponse?.statusCode == HttpStatus.requestTimeout) return;
 
     final blockListXml =
         '<BlockList>${blockIds.map((id) => '<Latest>$id</Latest>').join()}</BlockList>';
 
-    http.Response response = await _commitUpload(commitUri, blockListXml);
+    Response response = await _commitUpload(commitUri, blockListXml);
 
     cache.delete(fingerPrint);
 
-    _onComplete?.call(response.request!.url.path, response);
+    _onComplete?.call(response.requestOptions.path, response);
   }
 
-  _upload(Function(String) getUrl) async {
+  Future<Response?> _upload(Function(String) getUrl) async {
     fileSize = await file.length();
 
     _canResume();
@@ -106,29 +139,52 @@ class UploadClient {
 
       final chunkData = data.sublist(offset, size);
 
-      final response = await http.put(url, body: chunkData);
-      if (response.statusCode == 201) {
-        blockIds.add(blockId);
+      try {
+        Response response = await Dio().put(
+          url,
+          data: Stream.fromIterable(chunkData.map((e) => [e])),
+          options: Options(
+            headers: {
+              'x-ms-blob-type': 'BlockBlob',
+              'Content-Length': chunkData.length,
+            },
+            receiveTimeout: timeout.inMilliseconds,
+          ),
+          onSendProgress: (count, total) {
+            _onProgress?.call(count, total, null);
+          },
+        ).timeout(timeout, onTimeout: () {
+          _onTimeout?.call();
+          return Response(requestOptions: RequestOptions(path: ""));
+        });
 
-        offset += chunkData.length;
+        if (response.statusCode == 201) {
+          blockIds.add(blockId);
 
-        metaData.offset = offset;
-        metaData.blockIds.add(blockId);
-        metaData.index++;
-        metaData.isUploading = true;
-        cache.set(metaData);
-        _onProgress?.call(offset, fileSize, response);
-      } else {
-        metaData.isUploading = false;
-        cache.set(metaData);
-        _status = UploadStatus.error;
-        throw ResumableUploadException('Upload Failed', response: response);
+          offset += chunkData.length;
+
+          metaData.offset = offset;
+          metaData.blockIds.add(blockId);
+          metaData.index++;
+          metaData.isUploading = true;
+          cache.set(metaData);
+          _onProgress?.call(offset, fileSize, response);
+        } else {
+          metaData.isUploading = false;
+          cache.set(metaData);
+          _status = UploadStatus.error;
+          throw ResumableUploadException('Upload Failed', response: response);
+        }
+      } catch (e) {
+        print(e);
       }
     }
+    return null;
   }
 
   cancel() {
     _status = UploadStatus.cancelled;
+    cache.delete(fingerPrint);
     return ResumableUploadException('User cancelled upload!');
   }
 
@@ -139,8 +195,9 @@ class UploadClient {
     cache.set(metaData);
   }
 
-  Future<http.Response> _commitUpload(Uri commitUri, dynamic body) async {
-    final commitResponse = await http.put(commitUri, body: body);
+  Future<Response> _commitUpload(commitUri, dynamic body) async {
+    final commitResponse = await Dio().put(commitUri, data: body);
+
     if (commitResponse.statusCode == 201) {
       return commitResponse;
     } else {

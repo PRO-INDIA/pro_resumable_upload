@@ -1,7 +1,5 @@
 import 'dart:convert';
-
-// import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:pro_resumable_upload/src/upload_metadata.dart';
+import 'package:resumable_upload/src/upload_metadata.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 abstract class UploadCache {
@@ -38,32 +36,6 @@ class MemoryCache implements UploadCache {
   }
 }
 
-// class LocalCache implements UploadCache {
-//   late FlutterSecureStorage storage;
-//   LocalCache() : storage = const FlutterSecureStorage();
-//   @override
-//   Future<void> set(UploadMetaData data) async {
-//     await storage.write(key: data.key, value: data.toString());
-//   }
-
-//   @override
-//   Future<UploadMetaData?> get(String key) async {
-//     String? data = await storage.read(key: key);
-//     if (data == null) return null;
-//     print(jsonDecode(data));
-//     return UploadMetaData.fromJson(jsonDecode(data));
-//   }
-
-//   @override
-//   Future<void> delete(String key) async {
-//     await storage.delete(key: key);
-//   }
-
-//   @override
-//   Future<void> clearAll() async {
-//     // await storage.clear();
-//   }
-// }
 class LocalCache implements UploadCache {
   @override
   Future<void> set(UploadMetaData data) async {
@@ -76,9 +48,8 @@ class LocalCache implements UploadCache {
   Future<UploadMetaData?> get(String key) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.reload();
-    String? data = await prefs.getString(key);
+    String? data = prefs.getString(key);
     if (data == null) return null;
-    print(jsonDecode(data));
     return UploadMetaData.fromJson(jsonDecode(data));
   }
 

@@ -1,39 +1,74 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# Resumable file upload package developed by PRO India.
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/guides/libraries/writing-package-pages).
+latest version is 0.0.2
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-library-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/developing-packages).
--->
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+# pro_resumable_upload
+pro_resumable_upload is a Flutter package that provides support for resumable file uploads. It allows you to upload large files to a server and resume the upload from where it left off in case of interruptions or failures.
 
-## Features
+# Features
+> Resumable file uploads.
+> Support for large files.
+> Easily handle upload interruptions.
+> Configurable options for upload behavior.
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+# Installation
+1.Add pro_resumable_upload to your pubspec.yaml file:
+--------------------------------------------------
+    dependencies:
+        resumable_upload: ^1.0.0
+2.Usage
+-------------------------------------------------
+    Import the package:
+    import 'package:pro_resumable_upload/pro_resumable_upload.dart';
 
-## Getting started
+3.Create an instance of ResumableUpload:
+-------------------------------------------------
+    client = UploadClient(
+    file: file,
+    cache: _localCache,
+    blobConfig: BlobConfig(blobUrl: blobUrl, sasToken: sasToken),
+    );
+    
+4.Start the upload:
+-----------------------------------------------
+    client!.uploadBlob(
+    onProgress: (count, total, response) {
+        // Handle progress updates
+    },
+    onComplete: (path, response) {
+        // Handle complete updates
+    },
+);
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
 
-## Usage
+# Configuration Options
+@You can configure the behavior of the ResumableUpload by setting the following optional parameters:
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+> chunkSize: Set the size of each chunk to be uploaded. Default is 1 MB.
+> maxAttempts: Set the maximum number of attempts to resume an upload. Default is 3.
+> headers: Add custom headers to the upload request. Default is an empty Map<String, String>.
+> timeout: Set the timeout duration for each upload request. Default is 60 seconds.
 
-```dart
-const like = 'sample';
-```
+# Sample code:
+------------------------------------------------------------------------
+client = UploadClient(
+    file: file,
+    cache: _localCache,
+    blobConfig: BlobConfig(blobUrl: blobUrl, sasToken: sasToken),
+    );
+client!.uploadBlob(
+    onProgress: (count, total, response) {
+        // Handle progress updates
+    },
+    onComplete: (path, response) {
+        // Handle complete updates
+    },
+);
+---------------------------------------------------------------------
 
-## Additional information
+# Contributing
+We welcome contributions to this package. Feel free to open issues and pull requests to suggest improvements or report bugs.
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+# License
+This project is licensed under the MIT License.

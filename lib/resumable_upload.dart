@@ -1,4 +1,4 @@
-library pro_resumable_upload;
+library resumable_upload;
 
 export './src/client.dart';
 export './src/blob_config.dart';
