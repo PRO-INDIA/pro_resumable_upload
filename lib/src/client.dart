@@ -15,6 +15,8 @@ typedef ProgressCallback = void Function(
 
 typedef CompleteCallback = void Function(String path, Response response);
 
+typedef FailedCallback = void Function(String e);
+
 class UploadClient {
   // The file to upload
   final File file;
@@ -64,6 +66,8 @@ class UploadClient {
   // Callback fucntion on timeout request
   Function()? _onTimeout;
 
+  FailedCallback? _onFailed;
+
   UploadClient({
     required this.file,
     this.headers,
@@ -82,6 +86,7 @@ class UploadClient {
   uploadBlob({
     ProgressCallback? onProgress,
     CompleteCallback? onComplete,
+    FailedCallback? onFailed,
     Function()? onTimeout,
   }) async {
     if (blobConfig == null) {
@@ -94,26 +99,31 @@ class UploadClient {
 
     _onComplete = onComplete;
 
+    _onFailed = onFailed;
+
     _onTimeout = onTimeout;
 
     final commitUri = blobConfig!.getCommitUri();
 
-    Response? uploadResponse = await _upload(blobConfig!.getRequestUri);
+    if (!metaData.isChucksCompleted) {
+      _canResume();
+      await uploadChunk(blobConfig!.getRequestUri);
+    }
 
-    // If Response has Timeout to stop following process
-    if (uploadResponse?.statusCode == HttpStatus.requestTimeout) return;
+    if (metaData.offset >= fileSize) {
+      final blockListXml =
+          '<BlockList>${blockIds.map((id) => '<Latest>$id</Latest>').join()}</BlockList>';
 
-    final blockListXml =
-        '<BlockList>${blockIds.map((id) => '<Latest>$id</Latest>').join()}</BlockList>';
+      final response = await _commitUpload(commitUri, blockListXml);
 
-    Response response = await _commitUpload(commitUri, blockListXml);
+      cache.delete(fingerPrint);
 
-    cache.delete(fingerPrint);
-
-    _onComplete?.call(response.requestOptions.path, response);
+      _onComplete?.call(response.requestOptions.path, response);
+    }
   }
 
-  Future<Response?> _upload(Function(String) getUrl) async {
+  Future<Response?> uploadChunk(Function(String) getUrl) async {
+    Response? response;
     fileSize = await file.length();
 
     _canResume();
@@ -128,7 +138,11 @@ class UploadClient {
 
       if (!canUpload) throw _uploadError();
 
-      final String blockId = _generateBlockId(metaData.index);
+      final blockId = generateBlockId(metaData.index);
+
+      if (blockIds.contains(blockId)) continue;
+
+      print("${metaData.index}  $blockId");
 
       final url = getUrl(blockId);
 
@@ -140,7 +154,7 @@ class UploadClient {
       final chunkData = data.sublist(offset, size);
 
       try {
-        Response response = await Dio().put(
+        response = await Dio().put(
           url,
           data: Stream.fromIterable(chunkData.map((e) => [e])),
           options: Options(
@@ -158,15 +172,18 @@ class UploadClient {
           return Response(requestOptions: RequestOptions(path: ""));
         });
 
-        if (response.statusCode == 201) {
+        if (response.statusCode == 201 &&
+            !metaData.blockIds.contains(blockId)) {
           blockIds.add(blockId);
-
           offset += chunkData.length;
-
           metaData.offset = offset;
-          metaData.blockIds.add(blockId);
           metaData.index++;
+
           metaData.isUploading = true;
+
+          if (offset >= fileSize) {
+            metaData.isChucksCompleted = true;
+          }
           cache.set(metaData);
           _onProgress?.call(offset, fileSize, response);
         } else {
@@ -175,60 +192,81 @@ class UploadClient {
           _status = UploadStatus.error;
           throw ResumableUploadException('Upload Failed', response: response);
         }
+        print(blockIds.toString());
       } catch (e) {
-        print(e);
+        if (e is SocketException) {
+          _onFailed?.call('failed due to network');
+        } else {
+          _onFailed?.call('failed');
+        }
+        metaData.isUploading = false;
+        cancelClient();
+        break;
       }
     }
-    return null;
+    return response;
   }
 
-  cancel() {
+  void cancelClient() {
+    _status = UploadStatus.error;
+  }
+
+  void cancel() {
     _status = UploadStatus.cancelled;
     cache.delete(fingerPrint);
-    return ResumableUploadException('User cancelled upload!');
+    clearCache();
+    throw ResumableUploadException('User cancelled upload!');
   }
 
   clearCache() => cache.clearAll();
-
-  _updateUploadStatus(bool isUploading) {
-    metaData.isUploading = isUploading;
-    cache.set(metaData);
-  }
-
   Future<Response> _commitUpload(commitUri, dynamic body) async {
-    final commitResponse = await Dio().put(commitUri, data: body);
+    Response commitResponse;
+    try {
+      _onFailed?.call('Processing');
+      commitResponse = await Dio().put(commitUri, data: body);
 
-    if (commitResponse.statusCode == 201) {
+      if (commitResponse.statusCode == 201) {
+        cache.delete(fingerPrint);
+        return commitResponse;
+      }
+      _onFailed?.call('failed to commit');
       return commitResponse;
-    } else {
-      _updateUploadStatus(false);
-      throw ResumableUploadException('Error in committing blocks',
-          response: commitResponse);
+    } catch (e) {
+      if (e is SocketException) {
+        _updateUploadStatus(false);
+        _onFailed?.call('failed');
+        cancelClient();
+      } else {
+        cancel();
+      }
+
+      throw ResumableUploadException('Error in committing blocks');
     }
   }
 
-  String _generateBlockId(int index) {
-    final String blockId = 'pro-${index.toString().padLeft(5, '0')}';
-    return base64.encode(utf8.encode(blockId));
+  Future<void> _canResume() async {
+    final uploadData = await cache.get(fingerPrint);
+
+    if (uploadData == null) return;
+
+    offset = uploadData.offset;
+    blockIds = uploadData.blockIds;
+    uploadData.isUploading = true;
+    metaData = uploadData;
+    _onProgress?.call(offset, fileSize, null);
+  }
+
+  void _updateUploadStatus(bool isUploading) {
+    metaData.isUploading = isUploading;
+    cache.set(metaData);
   }
 
   String generateFingerprint() =>
       file.path.split('/').last.replaceAll(RegExp(r'\W+'), '');
 
-  void _canResume() async {
-    UploadMetaData? uploadData = await cache.get(fingerPrint);
-
-    if (uploadData == null) return;
-
-    offset = uploadData.offset;
-
-    blockIds = uploadData.blockIds;
-
-    uploadData.isUploading = true;
-
-    metaData = uploadData;
-
-    _onProgress?.call(offset, fileSize, null);
+  String generateBlockId(int index) {
+    final String blockId = 'pro-${index.toString().padLeft(5, '0')}';
+    return base64.encode(utf8.encode(blockId));
   }
 
   ResumableUploadException _uploadError() {
@@ -241,6 +279,7 @@ class UploadClient {
       case UploadStatus.completed:
         return ResumableUploadException('Upload already completed!');
       default:
+        cache.delete(fingerPrint);
         return ResumableUploadException('Upload failed!');
     }
   }
