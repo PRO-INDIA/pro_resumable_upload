@@ -13,11 +13,14 @@ class UploadMetaData {
 
   late bool isUploading;
 
+  late bool isChucksCompleted;
+
   UploadMetaData(this.key, this.offset)
       : totalSize = 0,
         index = 1,
         blockIds = [],
-        isUploading = false;
+        isUploading = false,
+        isChucksCompleted = false;
 
   @override
   String toString() {
@@ -27,7 +30,8 @@ class UploadMetaData {
       'totalSize': totalSize,
       'blockIds': blockIds,
       'index': index,
-      'isUploading': isUploading
+      'isUploading': isUploading,
+      'isChucksCompleted': isChucksCompleted
     };
     return jsonEncode(data);
   }
@@ -39,5 +43,6 @@ class UploadMetaData {
     blockIds = List.from(data['blockIds']).cast<String>();
     index = data['index'];
     isUploading = data['isUploading'];
+    isChucksCompleted = data['isChucksCompleted'];
   }
 }
