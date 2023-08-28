@@ -5,15 +5,15 @@ class BlobConfig {
 
   BlobConfig({required this.blobUrl, required this.sasToken});
 
-  Uri getRequestUri(String blockId) {
+  getRequestUri(String blockId) {
     final String url = '$blobUrl'
         '?comp=block&blockid=$blockId&$sasToken';
-    return Uri.parse(url);
+    return url;
   }
 
-  Uri getCommitUri() {
+  getCommitUri() {
     final String url = '$blobUrl'
         '?comp=blocklist&$sasToken';
-    return Uri.parse(url);
+    return url;
   }
 }
